@@ -174,6 +174,83 @@ GLOBAL_DATUM_INIT(iconCache, /savefile, new("tmp/iconCache.sav")) //Cache of ico
 /datum/chatOutput/proc/debug(error)
 	log_world("\[[time2text(world.realtime, "YYYY-MM-DD hh:mm:ss")]\] Client: [(src.owner.key ? src.owner.key : src.owner)] triggered JS error: [error]")
 
+GLOBAL_LIST_INIT(rus_unicode_conversion,list(
+	"А" = "0410", "а" = "0430",
+	"Б" = "0411", "б" = "0431",
+	"В" = "0412", "в" = "0432",
+	"Г" = "0413", "г" = "0433",
+	"Д" = "0414", "д" = "0434",
+	"Е" = "0415", "е" = "0435",
+	"Ж" = "0416", "ж" = "0436",
+	"З" = "0417", "з" = "0437",
+	"И" = "0418", "и" = "0438",
+	"Й" = "0419", "й" = "0439",
+	"К" = "041a", "к" = "043a",
+	"Л" = "041b", "л" = "043b",
+	"М" = "041c", "м" = "043c",
+	"Н" = "041d", "н" = "043d",
+	"О" = "041e", "о" = "043e",
+	"П" = "041f", "п" = "043f",
+	"Р" = "0420", "р" = "0440",
+	"С" = "0421", "с" = "0441",
+	"Т" = "0422", "т" = "0442",
+	"У" = "0423", "у" = "0443",
+	"Ф" = "0424", "ф" = "0444",
+	"Х" = "0425", "х" = "0445",
+	"Ц" = "0426", "ц" = "0446",
+	"Ч" = "0427", "ч" = "0447",
+	"Ш" = "0428", "ш" = "0448",
+	"Щ" = "0429", "щ" = "0449",
+	"Ъ" = "042a", "ъ" = "044a",
+	"Ы" = "042b", "ы" = "044b",
+	"Ь" = "042c", "ь" = "044c",
+	"Э" = "042d", "э" = "044d",
+	"Ю" = "042e", "ю" = "044e",
+	"Я" = "042f", "я" = "044f",
+
+	"Ё" = "0401", "ё" = "0451"
+	))
+
+/proc/r_text2unicode(text)
+	text = strip_macros(text)
+	text = russian_text2html(text)
+	for(var/s in GLOB.rus_unicode_conversion)
+		text = replacetext(text, s, "&#x[GLOB.rus_unicode_conversion[s]];")
+
+	return text
+
+/proc/strip_macros(t)
+	t = replacetext(t, "\proper", "")
+	t = replacetext(t, "\improper", "")
+	return t
+
+
+/proc/russian_text2html(t)
+	return replacetext(t, "&#255;", "&#x044f;")
+
+/proc/rhtml_encode(t)
+	t = strip_macros(t)
+	t = rhtml_decode(t) //idk maybe it'll do
+	var/list/c = splittext(t, "я")
+	if(c.len == 1)
+		return html_encode(t)
+	var/out = ""
+	var/first = 1
+	for(var/text in c)
+		if(!first)
+			out += "&#x044f;"
+		first = 0
+		out += html_encode(text)
+	return out
+
+// По идее меняет коды символов обратно на "я" и меняет HTML-эскейп обратно на символы.
+// На деле не используется, ибо зачем?
+/proc/rhtml_decode(var/t)
+	t = replacetext(t, "&#x044f;", "я")
+	t = replacetext(t, "&#255;", "я")
+	t = html_decode(t) //Подозреваю, именно это имелось ввиду, а не rhtml_decode(t)
+	return t
+
 //Global chat procs
 /proc/to_chat(target, message, handle_whitespace=TRUE)
 	if(!target)
@@ -199,7 +276,7 @@ GLOBAL_DATUM_INIT(iconCache, /savefile, new("tmp/iconCache.sav")) //Cache of ico
 	if(handle_whitespace)
 		message = replacetext(message, "\n", "<br>")
 		message = replacetext(message, "\t", "[GLOB.TAB][GLOB.TAB]")
-
+	message = r_text2unicode(message)
 	if(islist(target))
 		// Do the double-encoding outside the loop to save nanoseconds
 		var/twiceEncoded = url_encode(url_encode(message))
